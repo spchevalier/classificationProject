@@ -75,7 +75,8 @@ df.rename(columns={
 }, inplace=True)
 
 # Before standardisation : treat missing data (NaN)
-df.dropna(inplace=True)
+df = df.dropna()
+df.reset_index(inplace=True)
 
 # Standardise all numerical features
 scaler = StandardScaler()
@@ -84,23 +85,23 @@ df[numerical_data_columns] = scaler.fit_transform(df[numerical_data_columns])
 
 # Test the normalisation
 for column in numerical_data_columns:
-    print("Normalised mean of "+str(column)+"is : "+str(np.mean(df[column])))
-    print("Normalised standard deviation of "+str(column)+" is : "+str(np.std(df[column])))
-    print("Max of "+str(column)+" is : "+str(np.max(df[column])))
-    print("Min of "+str(column)+" is : "+str(np.min(df[column])))
+    print("Normalised mean of " + str(column) + "is : " + str(np.mean(df[column])))
+    print("Normalised standard deviation of " + str(column) + " is : " + str(np.std(df[column])))
+    print("Max of " + str(column) + " is : " + str(np.max(df[column])))
+    print("Min of " + str(column) + " is : " + str(np.min(df[column])))
 
 # Shorten name of labels and transform target variable (labels) to numerical data
 names_dict = {'Adelie Penguin (Pygoscelis adeliae)': 'Adelie',
               'Chinstrap penguin (Pygoscelis antarctica)': 'Chinstrap',
               'Gentoo penguin (Pygoscelis papua)': 'Gentoo'}
+names_number_dict = {'Adelie': 0, 'Chinstrap': 1, 'Gentoo': 2}
 df['Species'] = df['Species'].map(names_dict)
-species_list = df['Species'].unique().tolist()
-df['Species number'] = np.array([species_list.index(species) for species in df['Species']])
+df['Species number'] = df['Species'].map(names_number_dict)
+
 
 # Inspect the data again after cleanup
 print(df.head())
 print(df.info())
-
 
 # Split the data in features and labels
 y_text = df['Species']
@@ -109,7 +110,6 @@ X = df.drop(['Species', 'Species number'], axis=1)
 
 # Isolate the numerical data
 X_numerical = X[numerical_data_columns]
-
 
 # Inspect the correlations between the features by printing a heatmap of the correlation matrix
 correlation_matrix = X.corr()
@@ -135,26 +135,26 @@ pca.fit(X_numerical)
 components = pca.components_
 components_df = pd.DataFrame(components).transpose()
 components_df.index = components_df.columns
-print("The components are : "+str(components_df))
+print("The components are : " + str(components_df))
 
 eigvals = pca.explained_variance_ratio_
 cum_ratio = np.cumsum(eigvals)
 var_ratio = pd.DataFrame(eigvals).transpose()
-print("The eigenvalues are : "+str(var_ratio))
+print("The eigenvalues are : " + str(var_ratio))
 
 fig, axs = plt.subplots(1, 2)
-axs[0].plot(np.arange(1, len(eigvals)+1), eigvals,
+axs[0].plot(np.arange(1, len(eigvals) + 1), eigvals,
             marker='o', markeredgecolor='darkslategrey', markerfacecolor='teal', color='black')
 axs[0].set_title('Information explanation')
 axs[0].set_xlabel('Principal Axes / Components')
 axs[0].set_ylabel('Information explained')
 axs[0].set_facecolor('azure')
-axs[1].plot(np.arange(1, len(eigvals)+1), cum_ratio,
+axs[1].plot(np.arange(1, len(eigvals) + 1), cum_ratio,
             marker='D', markeredgecolor='black', markerfacecolor='azure', color='white')
 axs[1].set_title('Cumulative information')
 axs[1].set_xlabel('Principal Axes / Components')
 axs[1].set_facecolor('teal')
-axs[1].set_xticks(np.arange(1, len(eigvals)+1))
+axs[1].set_xticks(np.arange(1, len(eigvals) + 1))
 axs[1].hlines(y=0.95, xmin=1, xmax=4, linestyle='--', color='lavender')
 fig.set_facecolor("whitesmoke")
 plt.show()
@@ -168,11 +168,21 @@ plt.clf()
 pca_restricted = PCA(n_components=3)
 data_after_pca = pd.DataFrame(pca_restricted.fit_transform(X_numerical))
 data_after_pca.columns = ['PCA1', 'PCA2', 'PCA3']
-labeled_data_after_pca = data_after_pca.copy()
-labeled_data_after_pca['labels'] = y_text
-plot = sns.lmplot(x="PCA1", y="PCA2", data=labeled_data_after_pca, fit_reg=False, hue='labels', palette='pastel')
-fig = plot.fig
-fig.suptitle("Data in terms of first two principal components")
+labeled_pca_data = data_after_pca.copy()
+labeled_pca_data['labels'] = y_text
+label_to_color_map = {'Adelie': 'blue', 'Chinstrap': 'red', 'Gentoo': 'green'}
+fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection="3d"))
+for unique_label in np.unique(labeled_pca_data['labels']):
+    matching_data = labeled_pca_data.loc[labeled_pca_data["labels"] == unique_label, ['PCA1', 'PCA2', 'PCA3']]
+    ax.scatter(matching_data['PCA1'], matching_data['PCA2'], matching_data['PCA3'],
+               c=label_to_color_map.get(unique_label), label=unique_label, alpha=0.5)
+ax.legend()
+ax.set_facecolor("oldlace")
+ax.set_xlabel("PC1")
+ax.set_ylabel("PC2")
+ax.set_zlabel("PC3")
+fig.set_facecolor("wheat")
+plt.title("Data in terms of the principal components")
 plt.show()
 plt.clf()
 
@@ -185,7 +195,7 @@ for k in num_groups:
     model.fit(X, y_text)
     inertias.append(model.inertia_)
 
-fig, ax = plt.subplots(1,1)
+fig, ax = plt.subplots(1, 1)
 ax.plot(num_groups, inertias, color='black',
         marker='s', markerfacecolor='darkmagenta', markeredgecolor='indigo')
 ax.set_ylabel(r'Inertia $L$')
@@ -204,20 +214,23 @@ plt.show()
 model = KMeans(n_clusters=3)
 model.fit(data_after_pca)
 predictions = model.predict(data_after_pca)
+pred_num_to_species = {0:'Adelie', 1:'Chinstrap', 2:'Gentoo'}
 plot_data_with_predicted_labels = data_after_pca.copy()
 plot_data_with_predicted_labels['predicted_labels'] = predictions
 centers = model.cluster_centers_
 print(centers)
 
-fig, axs = plt.subplots(1,1)
+fig, axs = plt.subplots(1, 1)
 colors = ['b', 'r', 'g']
 cmap_peng = matplotlib.colors.ListedColormap(colors)
+numerical_label_to_label = {0: 'Adelie', 1: 'Gentoo', 2: 'XXX'}
 axs.set_xlabel("PCA1")
 axs.set_ylabel("PCA2")
 axs.scatter(plot_data_with_predicted_labels['PCA1'], plot_data_with_predicted_labels['PCA2'],
             c=plot_data_with_predicted_labels['predicted_labels'], cmap=cmap_peng,
             alpha=0.5)
 axs.scatter(centers[:, 0], centers[:, 1], marker='+', color='black')
+axs.legend(labels=plot_data_with_predicted_labels['predicted_labels'])
 axs.set_facecolor('gainsboro')
 plt.grid(True, linestyle='--', linewidth=0.5, color='white', alpha=0.5)
 plt.show()
@@ -228,13 +241,7 @@ plt.show()
 model_pca = KMeans(n_clusters=3)
 model_pca.fit(data_after_pca)
 
-
-
-
 # Perform K-neighrest neighbours
-
-
-
 
 
 # centroids_x = np.random.uniform(min(x),max(x),k)
@@ -244,8 +251,6 @@ model_pca.fit(data_after_pca)
 
 
 # SECOND : SUPERVISED LEARNING
-
-train_test_split(X_numerical)
 
 # Compare this with the actual labels
 
