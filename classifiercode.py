@@ -8,6 +8,8 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn import tree
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -107,7 +109,7 @@ print(df.info())
 # Split the data in features and labels
 y_text = df['Species']
 y = df['Species number']
-X = df.drop(['Species', 'Species number'], axis=1)
+X = df.drop(['index', 'Species', 'Species number'], axis=1)
 
 # Isolate the numerical data
 X_numerical = X[numerical_data_columns]
@@ -271,10 +273,10 @@ plt.show()
 plt.clf()
 
 # Give here some fractions of correct vs incorrect predictions
-frac_correct = len(matching_data)/len(all_data)
-frac_incorrect = len(non_matching_data)/len(all_data)
-print("The fraction of points correctly predicted by KMeans is "+str(frac_correct))
-print("The fraction of points wrongly predicted by KMeans is "+str(frac_incorrect))
+frac_correct = len(matching_data) / len(all_data)
+frac_incorrect = len(non_matching_data) / len(all_data)
+print("The fraction of points correctly predicted by KMeans is " + str(frac_correct))
+print("The fraction of points wrongly predicted by KMeans is " + str(frac_incorrect))
 
 # SECOND : SUPERVISED LEARNING
 
@@ -296,12 +298,12 @@ ax.plot(neighb_range, accuracies, c='darkslategrey', linewidth=1, alpha=0.5, lab
 ax.set_facecolor("ivory")
 ax.set_xlabel(r'number of nearest neighbours $k$')
 ax.set_ylabel(r'model accuracy')
-ax.set_xticks(np.arange(0, max_neighbours+1, x_tick_interval))
+ax.set_xticks(np.arange(0, max_neighbours + 1, x_tick_interval))
 ax.set_yticks(np.arange(0, 1.1, 0.025))
 plt.grid(True, linestyle='--', linewidth=0.5, color='gray', alpha=0.5)
 fig.set_facecolor("palegoldenrod")
 plt.title(r'KMeans accuracy in terms of $k$')
-#plt.show()
+# plt.show()
 # plt.clf()
 
 print("Using a KMeans model with k=2,3,...9 predicts 100% of labels correctly")
@@ -309,7 +311,7 @@ print("Using a KMeans model with k=2,3,...9 predicts 100% of labels correctly")
 # What if we only used the principal components?
 X_train, X_test, y_train, y_test = train_test_split(data_after_pca, y_text, test_size=0.2, random_state=random_seed)
 
-# Do k-nearest neighbours
+# Perform k-nearest neighbours only based on the principal (numerical) component
 max_neighbours = 200
 x_tick_interval = 10
 accuracies = []
@@ -333,10 +335,10 @@ ax.plot(neighb_range, accuracies, c='darkorange', linewidth=1, label="pca data")
 # plt.show()
 # plt.clf()
 
-# What if we add other data?
+# What if we do the same exercise based on all the data?
 X_train, X_test, y_train, y_test = train_test_split(X, y_text, test_size=0.2, random_state=random_seed)
 
-# Do k-nearest neighbours
+# Perform k-nearest neighbours
 max_neighbours = 200
 x_tick_interval = 10
 accuracies = []
@@ -361,7 +363,51 @@ ax.legend()
 plt.show()
 plt.clf()
 
+# Decision tree
+# Fit/train a decision tree classifier and analyse performance based on the test data for the three kinds of data.
+data_to_use = [X_numerical, data_after_pca, X]
+X_numerical.name = 'numerical data'
+data_after_pca.name = 'pca data'
+X.name = 'all data'
+color_map = {'numerical ': 'darkslategrey', 'pca data': 'darkorange', 'all data': 'mediumseagreen'}
+fig, ax = plt.subplots(1, 1)
+max_depth = 11
+depths = range(1, max_depth)
+best_depth_all_data = 0
+best_score = 0
+for data in data_to_use:
+    X_train, X_test, y_train, y_test = train_test_split(data, y_text, test_size=0.2, random_state=random_seed)
+    accuracies_tree = []
+    for depth in depths:
+        classifier = DecisionTreeClassifier(criterion="gini", max_depth=depth, random_state=random_seed)
+        classifier.fit(X_train, y_train)
+        score = classifier.score(X_test, y_test)
+        if (data.name == 'all data') & (score > best_score):
+            best_score = score
+            best_depth_all_data = depth
+        accuracies_tree.append(score)
+    ax.plot(depths, accuracies_tree, c=color_map.get(data.name), label=str(data.name), linewidth=1, alpha=0.8)
+ax.set_xlabel(r'depth $d$')
+ax.set_ylabel(r'accuracy')
+ax.set_xticks(depths)
+ax.set_facecolor("honeydew")
+ax.legend()
+fig.set_facecolor("darkseagreen")
+plt.title(r'Decision tree accuracy in terms of depth $d$')
+plt.grid(True, linestyle='--', linewidth=0.5, color='gray', alpha=0.5)
+plt.show()
+plt.clf()
 
-# Compare this with the actual labels and previous prediction based on a KMeans alone
+# Print best decision tree
+X_train, X_test, y_train, y_test = train_test_split(X, y_text, test_size=0.2, random_state=random_seed)
 
-# Step 3 : Feature selection
+plt.figure(figsize=(14, 8))
+dt = DecisionTreeClassifier(random_state=100, max_depth=best_depth_all_data)
+dt.fit(X_train, y_train)
+tree.plot_tree(dt, feature_names=X_train.columns,
+               class_names=['Adelie', 'Chinstrap', 'Gentoo'],
+               filled=True)
+plt.show()
+
+# Possible outlooks
+# Try sequential forward selection (SFS)
