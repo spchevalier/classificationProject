@@ -2,10 +2,12 @@ import matplotlib
 import pandas as pd
 import numpy as np
 from sklearn.cluster import KMeans
+from sklearn.model_selection import train_test_split
 # from sklearn.model_selection import train_test_split
 # from mlxtend.feature_selection import SequentialFeatureSelector as SFS
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
+from sklearn.neighbors import KNeighborsClassifier
 import seaborn as sns
 import matplotlib.pyplot as plt
 
@@ -269,10 +271,97 @@ plt.show()
 plt.clf()
 
 # Give here some fractions of correct vs incorrect predictions
+frac_correct = len(matching_data)/len(all_data)
+frac_incorrect = len(non_matching_data)/len(all_data)
+print("The fraction of points correctly predicted by KMeans is "+str(frac_correct))
+print("The fraction of points wrongly predicted by KMeans is "+str(frac_incorrect))
 
 # SECOND : SUPERVISED LEARNING
 
+X_train, X_test, y_train, y_test = train_test_split(X_numerical, y_text, test_size=0.2, random_state=random_seed)
+
 # Do k-nearest neighbours
+max_neighbours = 200
+x_tick_interval = 10
+accuracies = []
+neighb_range = range(1, max_neighbours + 1)
+for k in neighb_range:
+    classifier = KNeighborsClassifier(n_neighbors=k)
+    classifier.fit(X_train, y_train)
+    score = classifier.score(X_test, y_test)
+    accuracies.append(score)
+print(accuracies)
+fig, ax = plt.subplots(1, 1)
+ax.plot(neighb_range, accuracies, c='darkslategrey', linewidth=1, alpha=0.5, label="numerical data")
+ax.set_facecolor("ivory")
+ax.set_xlabel(r'number of nearest neighbours $k$')
+ax.set_ylabel(r'model accuracy')
+ax.set_xticks(np.arange(0, max_neighbours+1, x_tick_interval))
+ax.set_yticks(np.arange(0, 1.1, 0.025))
+plt.grid(True, linestyle='--', linewidth=0.5, color='gray', alpha=0.5)
+fig.set_facecolor("palegoldenrod")
+plt.title(r'KMeans accuracy in terms of $k$')
+#plt.show()
+# plt.clf()
+
+print("Using a KMeans model with k=2,3,...9 predicts 100% of labels correctly")
+
+# What if we only used the principal components?
+X_train, X_test, y_train, y_test = train_test_split(data_after_pca, y_text, test_size=0.2, random_state=random_seed)
+
+# Do k-nearest neighbours
+max_neighbours = 200
+x_tick_interval = 10
+accuracies = []
+neighb_range = range(1, max_neighbours + 1)
+for k in neighb_range:
+    classifier = KNeighborsClassifier(n_neighbors=k)
+    classifier.fit(X_train, y_train)
+    score = classifier.score(X_test, y_test)
+    accuracies.append(score)
+print(accuracies)
+# fig, ax = plt.subplots(1, 1)
+ax.plot(neighb_range, accuracies, c='darkorange', linewidth=1, label="pca data")
+# ax.set_facecolor("midnightblue")
+# ax.set_xlabel(r'number of nearest neighbours $k$')
+# ax.set_ylabel(r'model accuracy')
+# ax.set_xticks(np.arange(0, max_neighbours+1, x_tick_interval))
+# ax.set_yticks(np.arange(0, 1.1, 0.1))
+# plt.grid(True, linestyle='--', linewidth=0.5, color='gray', alpha=0.5)
+# fig.set_facecolor("honeydew")
+# plt.title(r'KMeans accuracy in terms of $k$ (using only PCA)')
+# plt.show()
+# plt.clf()
+
+# What if we add other data?
+X_train, X_test, y_train, y_test = train_test_split(X, y_text, test_size=0.2, random_state=random_seed)
+
+# Do k-nearest neighbours
+max_neighbours = 200
+x_tick_interval = 10
+accuracies = []
+neighb_range = range(1, max_neighbours + 1)
+for k in neighb_range:
+    classifier = KNeighborsClassifier(n_neighbors=k)
+    classifier.fit(X_train, y_train)
+    score = classifier.score(X_test, y_test)
+    accuracies.append(score)
+print(accuracies)
+# fig, ax = plt.subplots(1, 1)
+ax.plot(neighb_range, accuracies, c='mediumseagreen', linewidth=1, label="all data")
+# ax.set_facecolor("midnightblue")
+# ax.set_xlabel(r'number of nearest neighbours $k$')
+# ax.set_ylabel(r'model accuracy')
+# ax.set_xticks(np.arange(0, max_neighbours+1, x_tick_interval))
+# ax.set_yticks(np.arange(0, 1.1, 0.1))
+# plt.grid(True, linestyle='--', linewidth=0.5, color='gray', alpha=0.5)
+# fig.set_facecolor("honeydew")
+# plt.title(r'KMeans accuracy in terms of $k$')
+ax.legend()
+plt.show()
+plt.clf()
+
+
 # Compare this with the actual labels and previous prediction based on a KMeans alone
 
 # Step 3 : Feature selection
