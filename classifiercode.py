@@ -98,7 +98,6 @@ names_number_dict = {'Adelie': 0, 'Chinstrap': 1, 'Gentoo': 2}
 df['Species'] = df['Species'].map(names_dict)
 df['Species number'] = df['Species'].map(names_number_dict)
 
-
 # Inspect the data again after cleanup
 print(df.head())
 print(df.info())
@@ -182,7 +181,7 @@ ax.set_xlabel("PC1")
 ax.set_ylabel("PC2")
 ax.set_zlabel("PC3")
 fig.set_facecolor("wheat")
-plt.title("Data in terms of the principal components")
+plt.title("Actual species")
 plt.show()
 plt.clf()
 
@@ -211,47 +210,69 @@ plt.show()
 # number of groups.
 
 # Perform KMeans algorithm for 3 clusters
-model = KMeans(n_clusters=3)
+random_seed = 100
+model = KMeans(n_clusters=3, random_state=random_seed)
 model.fit(data_after_pca)
-predictions = model.predict(data_after_pca)
-pred_num_to_species = {0:'Adelie', 1:'Chinstrap', 2:'Gentoo'}
-plot_data_with_predicted_labels = data_after_pca.copy()
-plot_data_with_predicted_labels['predicted_labels'] = predictions
+numerical_predictions = model.predict(data_after_pca)
+# predictions = numerical_predictions.apply(lambda x: 'Adelie' if x == 0 else ('Chinstrap' if x == 1 else 'Gentoo'))
+pred_num_to_species = {0: 'Gentoo', 1: 'Adelie', 2: 'Chinstrap'}
 centers = model.cluster_centers_
-print(centers)
-
-fig, axs = plt.subplots(1, 1)
-colors = ['b', 'r', 'g']
-cmap_peng = matplotlib.colors.ListedColormap(colors)
-numerical_label_to_label = {0: 'Adelie', 1: 'Gentoo', 2: 'XXX'}
-axs.set_xlabel("PCA1")
-axs.set_ylabel("PCA2")
-axs.scatter(plot_data_with_predicted_labels['PCA1'], plot_data_with_predicted_labels['PCA2'],
-            c=plot_data_with_predicted_labels['predicted_labels'], cmap=cmap_peng,
-            alpha=0.5)
-axs.scatter(centers[:, 0], centers[:, 1], marker='+', color='black')
-axs.legend(labels=plot_data_with_predicted_labels['predicted_labels'])
-axs.set_facecolor('gainsboro')
-plt.grid(True, linestyle='--', linewidth=0.5, color='white', alpha=0.5)
+predicted_data = data_after_pca.copy()
+predicted_data['labels'] = numerical_predictions
+predicted_data['labels'] = predicted_data['labels'].map(pred_num_to_species)
+label_to_color_map = {'Adelie': 'blue', 'Chinstrap': 'red', 'Gentoo': 'green'}
+fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection="3d"))
+for unique_label in np.unique(predicted_data['labels']):
+    matching_data = predicted_data.loc[predicted_data["labels"] == unique_label, ['PCA1', 'PCA2', 'PCA3']]
+    ax.scatter(matching_data['PCA1'], matching_data['PCA2'], matching_data['PCA3'],
+               c=label_to_color_map.get(unique_label), label=unique_label, alpha=0.5)
+ax.scatter(centers[:, 0], centers[:, 1], centers[:, 2], marker='+', c='black', s=50, alpha=1)
+ax.legend()
+subtitle_text = 'Based on KMeans clustering'
+subtitle_location = (0.5, 0.95)
+ax.annotate(subtitle_text, subtitle_location, xycoords='axes fraction',
+            ha='center', va='center', fontsize=12, color='gray')
+ax.set_facecolor("oldlace")
+ax.set_xlabel("PC1")
+ax.set_ylabel("PC2")
+ax.set_zlabel("PC3")
+fig.set_facecolor("wheat")
+plt.title("Predicted species without label data")
 plt.show()
+plt.clf()
 
-# remark : print the centers of each cluster (after convergence)
+# Make plot of comparison
+# if correct : green dot
+# if wrong : red dot
+all_data = predicted_data.copy()
+all_data['actual_labels'] = labeled_pca_data['labels']
+fig, ax = plt.subplots(1, 1, subplot_kw=dict(projection="3d"))
+matching_data = all_data.loc[all_data["labels"] == all_data["actual_labels"], ['PCA1', 'PCA2', 'PCA3']]
+non_matching_data = all_data.loc[all_data["labels"] != all_data["actual_labels"], ['PCA1', 'PCA2', 'PCA3']]
+ax.scatter(matching_data['PCA1'], matching_data['PCA2'], matching_data['PCA3'],
+           c='green', label='correct', alpha=0.5)
+ax.scatter(non_matching_data['PCA1'], non_matching_data['PCA2'], non_matching_data['PCA3'],
+           c='red', label='incorrect', alpha=0.5)
+ax.scatter(centers[:, 0], centers[:, 1], centers[:, 2], marker='+', c='black', s=50, alpha=1)
+ax.legend()
+subtitle_text = 'Based on KMeans clustering'
+subtitle_location = (0.5, 0.95)
+ax.annotate(subtitle_text, subtitle_location, xycoords='axes fraction',
+            ha='center', va='center', fontsize=12, color='gray')
+ax.set_facecolor("oldlace")
+ax.set_xlabel("PC1")
+ax.set_ylabel("PC2")
+ax.set_zlabel("PC3")
+fig.set_facecolor("wheat")
+plt.title("Prediction comparison")
+plt.show()
+plt.clf()
 
-# Do this clustering based on the principal components
-model_pca = KMeans(n_clusters=3)
-model_pca.fit(data_after_pca)
-
-# Perform K-neighrest neighbours
-
-
-# centroids_x = np.random.uniform(min(x),max(x),k)
-
-
-# Look whether there might be other groups?
-
+# Give here some fractions of correct vs incorrect predictions
 
 # SECOND : SUPERVISED LEARNING
 
-# Compare this with the actual labels
+# Do k-nearest neighbours
+# Compare this with the actual labels and previous prediction based on a KMeans alone
 
 # Step 3 : Feature selection
